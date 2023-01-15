@@ -1,0 +1,1 @@
+docker build -t mihait0p/chia-docker-image .

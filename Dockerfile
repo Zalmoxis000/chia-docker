@@ -22,14 +22,14 @@ FROM python:3.9-slim
 
 EXPOSE 8555 8444
 
-ENV CHIA_ROOT=/root/.chia/mainnet
-ENV keys="generate"
+ENV CHIA_ROOT=/chiamainnet
+ENV keys="persistent"
 ENV service="farmer"
-ENV plots_dir="/plots"
+ENV plots_dir="/plots/local:/plots/usb1:/plots/usb2:/plots/usb3/ChiaPlots3:/plots/usb4:/plots/usb4/chiahub:/plots/usb4/xchpool:/plots/usb6:/plots/usb6/xchpool"
 ENV farmer_address=
 ENV farmer_port=
 ENV testnet="false"
-ENV TZ="UTC"
+ENV TZ="America/Chicago"
 ENV upnp="true"
 ENV log_to_file="true"
 ENV healthcheck="true"

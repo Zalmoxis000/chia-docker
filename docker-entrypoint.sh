@@ -11,7 +11,13 @@ cd /chia-blockchain || exit 1
 # shellcheck disable=SC1091
 . ./activate
 
-chia init --fix-ssl-permissions
+# shellcheck disable=SC2086
+chia ${chia_args} init --fix-ssl-permissions
+
+if [[ -n ${ca} ]]; then
+  # shellcheck disable=SC2086
+  chia ${chia_args} init -c "${ca}"
+fi
 
 if [[ ${testnet} == 'true' ]]; then
   echo "configure testnet"
@@ -19,17 +25,13 @@ if [[ ${testnet} == 'true' ]]; then
 fi
 
 if [[ ${keys} == "persistent" ]]; then
-  echo "Not touching key directories"
+  echo "Not touching key directories, key directory likely mounted by volume"
+elif [[ ${keys} == "none" ]]; then
+  # This is technically redundant to 'keys=persistent', but from a user's readability perspective, it means two different things
+  echo "Not touching key directories, no keys needed"
 elif [[ ${keys} == "generate" ]]; then
   echo "to use your own keys pass the mnemonic as a text file -v /path/to/keyfile:/path/in/container and -e keys=\"/path/in/container\""
   chia keys generate -l ""
-elif [[ ${keys} == "copy" ]]; then
-  if [[ -z ${ca} ]]; then
-    echo "A path to a copy of the farmer peer's ssl/ca required."
-    exit
-  else
-  chia init -c "${ca}"
-  fi
 else
   chia keys add -f "${keys}" -l ""
 fi
@@ -75,11 +77,24 @@ if [[ -n ${crawler_minimum_version_count} ]]; then
 fi
 
 if [[ -n ${self_hostname} ]]; then
-  sed -i "s/self_hostname: localhost/self_hostname: $self_hostname/g" "$CHIA_ROOT/config/config.yaml"
+  yq -i '.self_hostname = env(self_hostname)' "$CHIA_ROOT/config/config.yaml"
+else
+  yq -i '.self_hostname = "127.0.0.1"' "$CHIA_ROOT/config/config.yaml"
 fi
 
-# TODO: Document why this is needed
-sed -i 's/localhost/127.0.0.1/g' "$CHIA_ROOT/config/config.yaml"
+if [[ -n ${full_node_peer} ]]; then
+  echo "Changing full_node_peer settings in config.yaml with value: $full_node_peer"
+  full_node_peer_host=$(echo "$full_node_peer" | rev | cut -d ':' -f 2- | rev) \
+  full_node_peer_port=$(echo "$full_node_peer" | awk -F: '{print $NF}') \
+  yq -i '
+  .wallet.full_node_peer.host = env(full_node_peer_host) |
+  .wallet.full_node_peer.port = env(full_node_peer_port) |
+  .timelord.full_node_peer.host = env(full_node_peer_host) |
+  .timelord.full_node_peer.port = env(full_node_peer_port) |
+  .farmer.full_node_peer.host = env(full_node_peer_host) |
+  .farmer.full_node_peer.port = env(full_node_peer_port)
+  ' "$CHIA_ROOT/config/config.yaml"
+fi
 
 if [[ ${log_to_file} != 'true' ]]; then
   sed -i 's/log_stdout: false/log_stdout: true/g' "$CHIA_ROOT/config/config.yaml"

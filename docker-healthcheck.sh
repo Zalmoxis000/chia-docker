@@ -18,6 +18,7 @@ logger () {
     fi
 }
 
+
 # Set default to false for all components
 # Gets reset to true individually depending on ${service} variable
 node_check=false
